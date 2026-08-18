@@ -1,0 +1,32 @@
+syntax = "proto3";
+package kv;
+option go_package = "gocurrencylearning/kvpb";
+
+
+service KVStore {
+    rpc Get (Key) returns (Value) {}
+    rpc Set (SetRequest) returns (Value) {}
+    rpc Delete (Key) returns (DeleteInfo) {}
+    rpc Watch (Key) returns (stream Value) {}
+}
+
+
+
+message Key {
+    int32 key_val = 1;
+}
+
+message Value {
+    string val = 1;
+}
+
+
+message SetRequest {
+    int32 key_val = 1;
+    string val = 2;
+}
+
+message DeleteInfo {
+    bool existed = 1;
+    string val = 2;
+}
