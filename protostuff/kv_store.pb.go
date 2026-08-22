@@ -24,6 +24,7 @@ const (
 type Key struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	KeyVal        int32                  `protobuf:"varint,1,opt,name=key_val,json=keyVal,proto3" json:"key_val,omitempty"`
+	FromClient    bool                   `protobuf:"varint,2,opt,name=from_client,json=fromClient,proto3" json:"from_client,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -63,6 +64,13 @@ func (x *Key) GetKeyVal() int32 {
 		return x.KeyVal
 	}
 	return 0
+}
+
+func (x *Key) GetFromClient() bool {
+	if x != nil {
+		return x.FromClient
+	}
+	return false
 }
 
 type Value struct {
@@ -113,6 +121,7 @@ type SetRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	KeyVal        int32                  `protobuf:"varint,1,opt,name=key_val,json=keyVal,proto3" json:"key_val,omitempty"`
 	Val           string                 `protobuf:"bytes,2,opt,name=val,proto3" json:"val,omitempty"`
+	FromClient    bool                   `protobuf:"varint,3,opt,name=from_client,json=fromClient,proto3" json:"from_client,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -159,6 +168,13 @@ func (x *SetRequest) GetVal() string {
 		return x.Val
 	}
 	return ""
+}
+
+func (x *SetRequest) GetFromClient() bool {
+	if x != nil {
+		return x.FromClient
+	}
+	return false
 }
 
 type DeleteInfo struct {
@@ -217,15 +233,19 @@ var File_protostuff_kv_store_proto protoreflect.FileDescriptor
 
 const file_protostuff_kv_store_proto_rawDesc = "" +
 	"\n" +
-	"\x19protostuff/kv_store.proto\x12\x02kv\"\x1e\n" +
+	"\x19protostuff/kv_store.proto\x12\x02kv\"?\n" +
 	"\x03Key\x12\x17\n" +
-	"\akey_val\x18\x01 \x01(\x05R\x06keyVal\"\x19\n" +
+	"\akey_val\x18\x01 \x01(\x05R\x06keyVal\x12\x1f\n" +
+	"\vfrom_client\x18\x02 \x01(\bR\n" +
+	"fromClient\"\x19\n" +
 	"\x05Value\x12\x10\n" +
-	"\x03val\x18\x01 \x01(\tR\x03val\"7\n" +
+	"\x03val\x18\x01 \x01(\tR\x03val\"X\n" +
 	"\n" +
 	"SetRequest\x12\x17\n" +
 	"\akey_val\x18\x01 \x01(\x05R\x06keyVal\x12\x10\n" +
-	"\x03val\x18\x02 \x01(\tR\x03val\"8\n" +
+	"\x03val\x18\x02 \x01(\tR\x03val\x12\x1f\n" +
+	"\vfrom_client\x18\x03 \x01(\bR\n" +
+	"fromClient\"8\n" +
 	"\n" +
 	"DeleteInfo\x12\x18\n" +
 	"\aexisted\x18\x01 \x01(\bR\aexisted\x12\x10\n" +
