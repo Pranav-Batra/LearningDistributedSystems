@@ -327,6 +327,254 @@ func (*LogEntry_SetOp) isLogEntry_CommandType() {}
 
 func (*LogEntry_DeleteOp) isLogEntry_CommandType() {}
 
+type RequestVote struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Term          int32                  `protobuf:"varint,1,opt,name=term,proto3" json:"term,omitempty"`
+	LastLogIndex  int32                  `protobuf:"varint,2,opt,name=last_log_index,json=lastLogIndex,proto3" json:"last_log_index,omitempty"`
+	LastLogTerm   int32                  `protobuf:"varint,3,opt,name=last_log_term,json=lastLogTerm,proto3" json:"last_log_term,omitempty"`
+	NodeId        int32                  `protobuf:"varint,4,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequestVote) Reset() {
+	*x = RequestVote{}
+	mi := &file_protostuff_kv_store_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestVote) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestVote) ProtoMessage() {}
+
+func (x *RequestVote) ProtoReflect() protoreflect.Message {
+	mi := &file_protostuff_kv_store_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestVote.ProtoReflect.Descriptor instead.
+func (*RequestVote) Descriptor() ([]byte, []int) {
+	return file_protostuff_kv_store_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *RequestVote) GetTerm() int32 {
+	if x != nil {
+		return x.Term
+	}
+	return 0
+}
+
+func (x *RequestVote) GetLastLogIndex() int32 {
+	if x != nil {
+		return x.LastLogIndex
+	}
+	return 0
+}
+
+func (x *RequestVote) GetLastLogTerm() int32 {
+	if x != nil {
+		return x.LastLogTerm
+	}
+	return 0
+}
+
+func (x *RequestVote) GetNodeId() int32 {
+	if x != nil {
+		return x.NodeId
+	}
+	return 0
+}
+
+type RequestVoteResponse struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	VoterTerm         int32                  `protobuf:"varint,1,opt,name=voter_term,json=voterTerm,proto3" json:"voter_term,omitempty"`
+	VotedForCandidate bool                   `protobuf:"varint,2,opt,name=voted_for_candidate,json=votedForCandidate,proto3" json:"voted_for_candidate,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *RequestVoteResponse) Reset() {
+	*x = RequestVoteResponse{}
+	mi := &file_protostuff_kv_store_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestVoteResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestVoteResponse) ProtoMessage() {}
+
+func (x *RequestVoteResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_protostuff_kv_store_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestVoteResponse.ProtoReflect.Descriptor instead.
+func (*RequestVoteResponse) Descriptor() ([]byte, []int) {
+	return file_protostuff_kv_store_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *RequestVoteResponse) GetVoterTerm() int32 {
+	if x != nil {
+		return x.VoterTerm
+	}
+	return 0
+}
+
+func (x *RequestVoteResponse) GetVotedForCandidate() bool {
+	if x != nil {
+		return x.VotedForCandidate
+	}
+	return false
+}
+
+type AppendEntries struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	LeaderTerm    int32                  `protobuf:"varint,1,opt,name=leader_term,json=leaderTerm,proto3" json:"leader_term,omitempty"`
+	Entries       []*LogEntry            `protobuf:"bytes,2,rep,name=entries,proto3" json:"entries,omitempty"`
+	PrevTerm      int32                  `protobuf:"varint,3,opt,name=prev_term,json=prevTerm,proto3" json:"prev_term,omitempty"`
+	PrevIndex     int32                  `protobuf:"varint,4,opt,name=prev_index,json=prevIndex,proto3" json:"prev_index,omitempty"`
+	LeaderId      int32                  `protobuf:"varint,5,opt,name=leader_id,json=leaderId,proto3" json:"leader_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AppendEntries) Reset() {
+	*x = AppendEntries{}
+	mi := &file_protostuff_kv_store_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AppendEntries) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AppendEntries) ProtoMessage() {}
+
+func (x *AppendEntries) ProtoReflect() protoreflect.Message {
+	mi := &file_protostuff_kv_store_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AppendEntries.ProtoReflect.Descriptor instead.
+func (*AppendEntries) Descriptor() ([]byte, []int) {
+	return file_protostuff_kv_store_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AppendEntries) GetLeaderTerm() int32 {
+	if x != nil {
+		return x.LeaderTerm
+	}
+	return 0
+}
+
+func (x *AppendEntries) GetEntries() []*LogEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
+func (x *AppendEntries) GetPrevTerm() int32 {
+	if x != nil {
+		return x.PrevTerm
+	}
+	return 0
+}
+
+func (x *AppendEntries) GetPrevIndex() int32 {
+	if x != nil {
+		return x.PrevIndex
+	}
+	return 0
+}
+
+func (x *AppendEntries) GetLeaderId() int32 {
+	if x != nil {
+		return x.LeaderId
+	}
+	return 0
+}
+
+type AppendEntriesResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	FollowerTerm    int32                  `protobuf:"varint,1,opt,name=follower_term,json=followerTerm,proto3" json:"follower_term,omitempty"`
+	AppendedEntries bool                   `protobuf:"varint,2,opt,name=appended_entries,json=appendedEntries,proto3" json:"appended_entries,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AppendEntriesResponse) Reset() {
+	*x = AppendEntriesResponse{}
+	mi := &file_protostuff_kv_store_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AppendEntriesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AppendEntriesResponse) ProtoMessage() {}
+
+func (x *AppendEntriesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_protostuff_kv_store_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AppendEntriesResponse.ProtoReflect.Descriptor instead.
+func (*AppendEntriesResponse) Descriptor() ([]byte, []int) {
+	return file_protostuff_kv_store_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AppendEntriesResponse) GetFollowerTerm() int32 {
+	if x != nil {
+		return x.FollowerTerm
+	}
+	return 0
+}
+
+func (x *AppendEntriesResponse) GetAppendedEntries() bool {
+	if x != nil {
+		return x.AppendedEntries
+	}
+	return false
+}
+
 var File_protostuff_kv_store_proto protoreflect.FileDescriptor
 
 const file_protostuff_kv_store_proto_rawDesc = "" +
@@ -353,12 +601,34 @@ const file_protostuff_kv_store_proto_rawDesc = "" +
 	"\x05index\x18\x02 \x01(\x05R\x05index\x12'\n" +
 	"\x06set_op\x18\x03 \x01(\v2\x0e.kv.SetRequestH\x00R\x05setOp\x12&\n" +
 	"\tdelete_op\x18\x04 \x01(\v2\a.kv.KeyH\x00R\bdeleteOpB\x0e\n" +
-	"\fcommand_type2\x90\x01\n" +
+	"\fcommand_type\"\x84\x01\n" +
+	"\vRequestVote\x12\x12\n" +
+	"\x04term\x18\x01 \x01(\x05R\x04term\x12$\n" +
+	"\x0elast_log_index\x18\x02 \x01(\x05R\flastLogIndex\x12\"\n" +
+	"\rlast_log_term\x18\x03 \x01(\x05R\vlastLogTerm\x12\x17\n" +
+	"\anode_id\x18\x04 \x01(\x05R\x06nodeId\"d\n" +
+	"\x13RequestVoteResponse\x12\x1d\n" +
+	"\n" +
+	"voter_term\x18\x01 \x01(\x05R\tvoterTerm\x12.\n" +
+	"\x13voted_for_candidate\x18\x02 \x01(\bR\x11votedForCandidate\"\xb1\x01\n" +
+	"\rAppendEntries\x12\x1f\n" +
+	"\vleader_term\x18\x01 \x01(\x05R\n" +
+	"leaderTerm\x12&\n" +
+	"\aentries\x18\x02 \x03(\v2\f.kv.LogEntryR\aentries\x12\x1b\n" +
+	"\tprev_term\x18\x03 \x01(\x05R\bprevTerm\x12\x1d\n" +
+	"\n" +
+	"prev_index\x18\x04 \x01(\x05R\tprevIndex\x12\x1b\n" +
+	"\tleader_id\x18\x05 \x01(\x05R\bleaderId\"g\n" +
+	"\x15AppendEntriesResponse\x12#\n" +
+	"\rfollower_term\x18\x01 \x01(\x05R\ffollowerTerm\x12)\n" +
+	"\x10appended_entries\x18\x02 \x01(\bR\x0fappendedEntries2\x95\x02\n" +
 	"\aKVStore\x12\x1b\n" +
 	"\x03Get\x12\a.kv.Key\x1a\t.kv.Value\"\x00\x12\"\n" +
 	"\x03Set\x12\x0e.kv.SetRequest\x1a\t.kv.Value\"\x00\x12#\n" +
 	"\x06Delete\x12\a.kv.Key\x1a\x0e.kv.DeleteInfo\"\x00\x12\x1f\n" +
-	"\x05Watch\x12\a.kv.Key\x1a\t.kv.Value\"\x000\x01B\x19Z\x17gocurrencylearning/kvpbb\x06proto3"
+	"\x05Watch\x12\a.kv.Key\x1a\t.kv.Value\"\x000\x01\x12>\n" +
+	"\x10NodeRequestsVote\x12\x0f.kv.RequestVote\x1a\x17.kv.RequestVoteResponse\"\x00\x12C\n" +
+	"\x11NodeAppendEntries\x12\x11.kv.AppendEntries\x1a\x19.kv.AppendEntriesResponse\"\x00B\x19Z\x17gocurrencylearning/kvpbb\x06proto3"
 
 var (
 	file_protostuff_kv_store_proto_rawDescOnce sync.Once
@@ -372,30 +642,39 @@ func file_protostuff_kv_store_proto_rawDescGZIP() []byte {
 	return file_protostuff_kv_store_proto_rawDescData
 }
 
-var file_protostuff_kv_store_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_protostuff_kv_store_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_protostuff_kv_store_proto_goTypes = []any{
-	(*Key)(nil),        // 0: kv.Key
-	(*Value)(nil),      // 1: kv.Value
-	(*SetRequest)(nil), // 2: kv.SetRequest
-	(*DeleteInfo)(nil), // 3: kv.DeleteInfo
-	(*LogEntry)(nil),   // 4: kv.LogEntry
+	(*Key)(nil),                   // 0: kv.Key
+	(*Value)(nil),                 // 1: kv.Value
+	(*SetRequest)(nil),            // 2: kv.SetRequest
+	(*DeleteInfo)(nil),            // 3: kv.DeleteInfo
+	(*LogEntry)(nil),              // 4: kv.LogEntry
+	(*RequestVote)(nil),           // 5: kv.RequestVote
+	(*RequestVoteResponse)(nil),   // 6: kv.RequestVoteResponse
+	(*AppendEntries)(nil),         // 7: kv.AppendEntries
+	(*AppendEntriesResponse)(nil), // 8: kv.AppendEntriesResponse
 }
 var file_protostuff_kv_store_proto_depIdxs = []int32{
 	2, // 0: kv.LogEntry.set_op:type_name -> kv.SetRequest
 	0, // 1: kv.LogEntry.delete_op:type_name -> kv.Key
-	0, // 2: kv.KVStore.Get:input_type -> kv.Key
-	2, // 3: kv.KVStore.Set:input_type -> kv.SetRequest
-	0, // 4: kv.KVStore.Delete:input_type -> kv.Key
-	0, // 5: kv.KVStore.Watch:input_type -> kv.Key
-	1, // 6: kv.KVStore.Get:output_type -> kv.Value
-	1, // 7: kv.KVStore.Set:output_type -> kv.Value
-	3, // 8: kv.KVStore.Delete:output_type -> kv.DeleteInfo
-	1, // 9: kv.KVStore.Watch:output_type -> kv.Value
-	6, // [6:10] is the sub-list for method output_type
-	2, // [2:6] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	4, // 2: kv.AppendEntries.entries:type_name -> kv.LogEntry
+	0, // 3: kv.KVStore.Get:input_type -> kv.Key
+	2, // 4: kv.KVStore.Set:input_type -> kv.SetRequest
+	0, // 5: kv.KVStore.Delete:input_type -> kv.Key
+	0, // 6: kv.KVStore.Watch:input_type -> kv.Key
+	5, // 7: kv.KVStore.NodeRequestsVote:input_type -> kv.RequestVote
+	7, // 8: kv.KVStore.NodeAppendEntries:input_type -> kv.AppendEntries
+	1, // 9: kv.KVStore.Get:output_type -> kv.Value
+	1, // 10: kv.KVStore.Set:output_type -> kv.Value
+	3, // 11: kv.KVStore.Delete:output_type -> kv.DeleteInfo
+	1, // 12: kv.KVStore.Watch:output_type -> kv.Value
+	6, // 13: kv.KVStore.NodeRequestsVote:output_type -> kv.RequestVoteResponse
+	8, // 14: kv.KVStore.NodeAppendEntries:output_type -> kv.AppendEntriesResponse
+	9, // [9:15] is the sub-list for method output_type
+	3, // [3:9] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_protostuff_kv_store_proto_init() }
@@ -413,7 +692,7 @@ func file_protostuff_kv_store_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protostuff_kv_store_proto_rawDesc), len(file_protostuff_kv_store_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -8,6 +8,8 @@ service KVStore {
     rpc Set (SetRequest) returns (Value) {}
     rpc Delete (Key) returns (DeleteInfo) {}
     rpc Watch (Key) returns (stream Value) {}
+    rpc NodeRequestsVote (RequestVote) returns (RequestVoteResponse) {}
+    rpc NodeAppendEntries (AppendEntries) returns (AppendEntriesResponse) {}
 }
 
 
@@ -40,4 +42,29 @@ message LogEntry {
         SetRequest set_op = 3;
         Key delete_op = 4;
     }
+}
+
+message RequestVote {
+    int32 term = 1;
+    int32 last_log_index = 2;
+    int32 last_log_term = 3;
+    int32 node_id = 4;
+}
+
+message RequestVoteResponse {
+    int32 voter_term = 1;
+    bool voted_for_candidate = 2;
+}
+
+message AppendEntries {
+    int32 leader_term = 1;
+    repeated LogEntry entries = 2;
+    int32 prev_term = 3;
+    int32 prev_index = 4;
+    int32 leader_id = 5;
+}
+
+message AppendEntriesResponse {
+    int32 follower_term = 1;
+    bool appended_entries = 2;
 }

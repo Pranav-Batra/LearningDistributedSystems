@@ -19,10 +19,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	KVStore_Get_FullMethodName    = "/kv.KVStore/Get"
-	KVStore_Set_FullMethodName    = "/kv.KVStore/Set"
-	KVStore_Delete_FullMethodName = "/kv.KVStore/Delete"
-	KVStore_Watch_FullMethodName  = "/kv.KVStore/Watch"
+	KVStore_Get_FullMethodName               = "/kv.KVStore/Get"
+	KVStore_Set_FullMethodName               = "/kv.KVStore/Set"
+	KVStore_Delete_FullMethodName            = "/kv.KVStore/Delete"
+	KVStore_Watch_FullMethodName             = "/kv.KVStore/Watch"
+	KVStore_NodeRequestsVote_FullMethodName  = "/kv.KVStore/NodeRequestsVote"
+	KVStore_NodeAppendEntries_FullMethodName = "/kv.KVStore/NodeAppendEntries"
 )
 
 // KVStoreClient is the client API for KVStore service.
@@ -33,6 +35,8 @@ type KVStoreClient interface {
 	Set(ctx context.Context, in *SetRequest, opts ...grpc.CallOption) (*Value, error)
 	Delete(ctx context.Context, in *Key, opts ...grpc.CallOption) (*DeleteInfo, error)
 	Watch(ctx context.Context, in *Key, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Value], error)
+	NodeRequestsVote(ctx context.Context, in *RequestVote, opts ...grpc.CallOption) (*RequestVoteResponse, error)
+	NodeAppendEntries(ctx context.Context, in *AppendEntries, opts ...grpc.CallOption) (*AppendEntriesResponse, error)
 }
 
 type kVStoreClient struct {
@@ -92,6 +96,26 @@ func (c *kVStoreClient) Watch(ctx context.Context, in *Key, opts ...grpc.CallOpt
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type KVStore_WatchClient = grpc.ServerStreamingClient[Value]
 
+func (c *kVStoreClient) NodeRequestsVote(ctx context.Context, in *RequestVote, opts ...grpc.CallOption) (*RequestVoteResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RequestVoteResponse)
+	err := c.cc.Invoke(ctx, KVStore_NodeRequestsVote_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kVStoreClient) NodeAppendEntries(ctx context.Context, in *AppendEntries, opts ...grpc.CallOption) (*AppendEntriesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AppendEntriesResponse)
+	err := c.cc.Invoke(ctx, KVStore_NodeAppendEntries_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // KVStoreServer is the server API for KVStore service.
 // All implementations must embed UnimplementedKVStoreServer
 // for forward compatibility.
@@ -100,6 +124,8 @@ type KVStoreServer interface {
 	Set(context.Context, *SetRequest) (*Value, error)
 	Delete(context.Context, *Key) (*DeleteInfo, error)
 	Watch(*Key, grpc.ServerStreamingServer[Value]) error
+	NodeRequestsVote(context.Context, *RequestVote) (*RequestVoteResponse, error)
+	NodeAppendEntries(context.Context, *AppendEntries) (*AppendEntriesResponse, error)
 	mustEmbedUnimplementedKVStoreServer()
 }
 
@@ -121,6 +147,12 @@ func (UnimplementedKVStoreServer) Delete(context.Context, *Key) (*DeleteInfo, er
 }
 func (UnimplementedKVStoreServer) Watch(*Key, grpc.ServerStreamingServer[Value]) error {
 	return status.Error(codes.Unimplemented, "method Watch not implemented")
+}
+func (UnimplementedKVStoreServer) NodeRequestsVote(context.Context, *RequestVote) (*RequestVoteResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method NodeRequestsVote not implemented")
+}
+func (UnimplementedKVStoreServer) NodeAppendEntries(context.Context, *AppendEntries) (*AppendEntriesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method NodeAppendEntries not implemented")
 }
 func (UnimplementedKVStoreServer) mustEmbedUnimplementedKVStoreServer() {}
 func (UnimplementedKVStoreServer) testEmbeddedByValue()                 {}
@@ -208,6 +240,42 @@ func _KVStore_Watch_Handler(srv interface{}, stream grpc.ServerStream) error {
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type KVStore_WatchServer = grpc.ServerStreamingServer[Value]
 
+func _KVStore_NodeRequestsVote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestVote)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KVStoreServer).NodeRequestsVote(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KVStore_NodeRequestsVote_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KVStoreServer).NodeRequestsVote(ctx, req.(*RequestVote))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KVStore_NodeAppendEntries_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AppendEntries)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KVStoreServer).NodeAppendEntries(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KVStore_NodeAppendEntries_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KVStoreServer).NodeAppendEntries(ctx, req.(*AppendEntries))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // KVStore_ServiceDesc is the grpc.ServiceDesc for KVStore service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -226,6 +294,14 @@ var KVStore_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Delete",
 			Handler:    _KVStore_Delete_Handler,
+		},
+		{
+			MethodName: "NodeRequestsVote",
+			Handler:    _KVStore_NodeRequestsVote_Handler,
+		},
+		{
+			MethodName: "NodeAppendEntries",
+			Handler:    _KVStore_NodeAppendEntries_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
