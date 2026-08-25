@@ -22,11 +22,49 @@ type kvStoreServer struct {
 	peers []pb.KVStoreClient
 }
 
+type ServerState int 
+
+const (
+	Follower ServerState = iota
+	Candidate
+	Leader
+)
+
+func (s ServerState) String() string {
+	switch s {
+	case Follower:
+		return "Follower"
+	case Candidate:
+		return "Candidate"
+	case Leader:
+		return "Leader"
+	}
+	return ""
+}
+
+type RaftNode struct {
+	currentTerm int
+	votedFor int
+	state ServerState
+	log []pb.LogEntry
+
+	matchIndex []int
+	nextIndex []int
+}
+
 func (kv *kvStoreServer) Get(_ context.Context, k *pb.Key) (*pb.Value, error) {
 	ret_val := kvstore.Get(int(k.KeyVal))
 	return &pb.Value{Val: ret_val}, nil
 }
-
+func (node *RaftNode) BecomeLeader() {
+	node.state = Leader
+	node.matchIndex = make([]int, 2)
+	node.nextIndex = make([]int, 2)
+	for i, _ := range node.matchIndex {
+		node.matchIndex[i] = len(node.log)
+	}
+	
+}
 
 func (kv *kvStoreServer) Set(_ context.Context, sr *pb.SetRequest) (*pb.Value, error) { 
 	input_val := kvstore.Set(int(sr.KeyVal), string(sr.Val))

@@ -32,3 +32,12 @@ message DeleteInfo {
     bool existed = 1;
     string val = 2;
 }
+
+message LogEntry {
+    int32 term = 1;
+    int32 index = 2; 
+    oneof command_type {
+        SetRequest set_op = 3;
+        Key delete_op = 4;
+    }
+}

@@ -229,6 +229,104 @@ func (x *DeleteInfo) GetVal() string {
 	return ""
 }
 
+type LogEntry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Term  int32                  `protobuf:"varint,1,opt,name=term,proto3" json:"term,omitempty"`
+	Index int32                  `protobuf:"varint,2,opt,name=index,proto3" json:"index,omitempty"`
+	// Types that are valid to be assigned to CommandType:
+	//
+	//	*LogEntry_SetOp
+	//	*LogEntry_DeleteOp
+	CommandType   isLogEntry_CommandType `protobuf_oneof:"command_type"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LogEntry) Reset() {
+	*x = LogEntry{}
+	mi := &file_protostuff_kv_store_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LogEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LogEntry) ProtoMessage() {}
+
+func (x *LogEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_protostuff_kv_store_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LogEntry.ProtoReflect.Descriptor instead.
+func (*LogEntry) Descriptor() ([]byte, []int) {
+	return file_protostuff_kv_store_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *LogEntry) GetTerm() int32 {
+	if x != nil {
+		return x.Term
+	}
+	return 0
+}
+
+func (x *LogEntry) GetIndex() int32 {
+	if x != nil {
+		return x.Index
+	}
+	return 0
+}
+
+func (x *LogEntry) GetCommandType() isLogEntry_CommandType {
+	if x != nil {
+		return x.CommandType
+	}
+	return nil
+}
+
+func (x *LogEntry) GetSetOp() *SetRequest {
+	if x != nil {
+		if x, ok := x.CommandType.(*LogEntry_SetOp); ok {
+			return x.SetOp
+		}
+	}
+	return nil
+}
+
+func (x *LogEntry) GetDeleteOp() *Key {
+	if x != nil {
+		if x, ok := x.CommandType.(*LogEntry_DeleteOp); ok {
+			return x.DeleteOp
+		}
+	}
+	return nil
+}
+
+type isLogEntry_CommandType interface {
+	isLogEntry_CommandType()
+}
+
+type LogEntry_SetOp struct {
+	SetOp *SetRequest `protobuf:"bytes,3,opt,name=set_op,json=setOp,proto3,oneof"`
+}
+
+type LogEntry_DeleteOp struct {
+	DeleteOp *Key `protobuf:"bytes,4,opt,name=delete_op,json=deleteOp,proto3,oneof"`
+}
+
+func (*LogEntry_SetOp) isLogEntry_CommandType() {}
+
+func (*LogEntry_DeleteOp) isLogEntry_CommandType() {}
+
 var File_protostuff_kv_store_proto protoreflect.FileDescriptor
 
 const file_protostuff_kv_store_proto_rawDesc = "" +
@@ -249,7 +347,13 @@ const file_protostuff_kv_store_proto_rawDesc = "" +
 	"\n" +
 	"DeleteInfo\x12\x18\n" +
 	"\aexisted\x18\x01 \x01(\bR\aexisted\x12\x10\n" +
-	"\x03val\x18\x02 \x01(\tR\x03val2\x90\x01\n" +
+	"\x03val\x18\x02 \x01(\tR\x03val\"\x95\x01\n" +
+	"\bLogEntry\x12\x12\n" +
+	"\x04term\x18\x01 \x01(\x05R\x04term\x12\x14\n" +
+	"\x05index\x18\x02 \x01(\x05R\x05index\x12'\n" +
+	"\x06set_op\x18\x03 \x01(\v2\x0e.kv.SetRequestH\x00R\x05setOp\x12&\n" +
+	"\tdelete_op\x18\x04 \x01(\v2\a.kv.KeyH\x00R\bdeleteOpB\x0e\n" +
+	"\fcommand_type2\x90\x01\n" +
 	"\aKVStore\x12\x1b\n" +
 	"\x03Get\x12\a.kv.Key\x1a\t.kv.Value\"\x00\x12\"\n" +
 	"\x03Set\x12\x0e.kv.SetRequest\x1a\t.kv.Value\"\x00\x12#\n" +
@@ -268,27 +372,30 @@ func file_protostuff_kv_store_proto_rawDescGZIP() []byte {
 	return file_protostuff_kv_store_proto_rawDescData
 }
 
-var file_protostuff_kv_store_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_protostuff_kv_store_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_protostuff_kv_store_proto_goTypes = []any{
 	(*Key)(nil),        // 0: kv.Key
 	(*Value)(nil),      // 1: kv.Value
 	(*SetRequest)(nil), // 2: kv.SetRequest
 	(*DeleteInfo)(nil), // 3: kv.DeleteInfo
+	(*LogEntry)(nil),   // 4: kv.LogEntry
 }
 var file_protostuff_kv_store_proto_depIdxs = []int32{
-	0, // 0: kv.KVStore.Get:input_type -> kv.Key
-	2, // 1: kv.KVStore.Set:input_type -> kv.SetRequest
-	0, // 2: kv.KVStore.Delete:input_type -> kv.Key
-	0, // 3: kv.KVStore.Watch:input_type -> kv.Key
-	1, // 4: kv.KVStore.Get:output_type -> kv.Value
-	1, // 5: kv.KVStore.Set:output_type -> kv.Value
-	3, // 6: kv.KVStore.Delete:output_type -> kv.DeleteInfo
-	1, // 7: kv.KVStore.Watch:output_type -> kv.Value
-	4, // [4:8] is the sub-list for method output_type
-	0, // [0:4] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	2, // 0: kv.LogEntry.set_op:type_name -> kv.SetRequest
+	0, // 1: kv.LogEntry.delete_op:type_name -> kv.Key
+	0, // 2: kv.KVStore.Get:input_type -> kv.Key
+	2, // 3: kv.KVStore.Set:input_type -> kv.SetRequest
+	0, // 4: kv.KVStore.Delete:input_type -> kv.Key
+	0, // 5: kv.KVStore.Watch:input_type -> kv.Key
+	1, // 6: kv.KVStore.Get:output_type -> kv.Value
+	1, // 7: kv.KVStore.Set:output_type -> kv.Value
+	3, // 8: kv.KVStore.Delete:output_type -> kv.DeleteInfo
+	1, // 9: kv.KVStore.Watch:output_type -> kv.Value
+	6, // [6:10] is the sub-list for method output_type
+	2, // [2:6] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_protostuff_kv_store_proto_init() }
@@ -296,13 +403,17 @@ func file_protostuff_kv_store_proto_init() {
 	if File_protostuff_kv_store_proto != nil {
 		return
 	}
+	file_protostuff_kv_store_proto_msgTypes[4].OneofWrappers = []any{
+		(*LogEntry_SetOp)(nil),
+		(*LogEntry_DeleteOp)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protostuff_kv_store_proto_rawDesc), len(file_protostuff_kv_store_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
