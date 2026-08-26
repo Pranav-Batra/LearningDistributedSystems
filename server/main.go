@@ -43,27 +43,52 @@ func (s ServerState) String() string {
 }
 
 type RaftNode struct {
-	currentTerm int
-	votedFor int
+	id int32
+	currentTerm int32
+	votedFor int32
 	state ServerState
 	log []pb.LogEntry
+	leaderId int32
+	peers []pb.KVStoreClient
 
-	matchIndex []int
-	nextIndex []int
+	matchIndex []int32
+	nextIndex []int32
+}
+
+func (node *RaftNode) BecomeLeader() {
+	node.state = Leader
+	node.matchIndex = make([]int32, len(node.peers))
+	node.nextIndex = make([]int32, len(node.peers))
+	for i := range node.nextIndex {
+		node.nextIndex[i] = int32(len(node.log))
+	}
+	node.leaderId = node.id
+	
+}
+
+func (node *RaftNode) BecomeFollower(term int32) {
+	if term < node.currentTerm {
+		return
+	}
+	if term > node.currentTerm {
+		node.votedFor = -1
+	}
+	node.currentTerm = term
+	node.state = Follower
+	node.matchIndex = nil
+	node.nextIndex = nil
+}
+
+func (node *RaftNode) BecomeCandidate() {
+	node.currentTerm++
+	node.state = Candidate
+	node.leaderId = -1
+	node.votedFor = node.id
 }
 
 func (kv *kvStoreServer) Get(_ context.Context, k *pb.Key) (*pb.Value, error) {
 	ret_val := kvstore.Get(int(k.KeyVal))
 	return &pb.Value{Val: ret_val}, nil
-}
-func (node *RaftNode) BecomeLeader() {
-	node.state = Leader
-	node.matchIndex = make([]int, 2)
-	node.nextIndex = make([]int, 2)
-	for i, _ := range node.matchIndex {
-		node.matchIndex[i] = len(node.log)
-	}
-	
 }
 
 func (kv *kvStoreServer) Set(_ context.Context, sr *pb.SetRequest) (*pb.Value, error) { 
