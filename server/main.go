@@ -20,6 +20,7 @@ var mu sync.Mutex
 type kvStoreServer struct {
 	pb.UnimplementedKVStoreServer
 	peers []pb.KVStoreClient
+	raft *RaftNode
 }
 
 type ServerState int 
@@ -86,6 +87,33 @@ func (node *RaftNode) BecomeCandidate() {
 	node.votedFor = node.id
 }
 
+func (node *RaftNode) NodeRequestsVote(rv *pb.RequestVote) (*pb.RequestVoteResponse, error) {
+	N := len(node.log)
+	if rv.Term > node.currentTerm {
+		node.BecomeFollower(rv.Term)
+	}
+	voteTrue := &pb.RequestVoteResponse{VoterTerm: node.currentTerm, VotedForCandidate: true}
+	rejectVote := &pb.RequestVoteResponse{VoterTerm: node.currentTerm, VotedForCandidate: false}
+	if node.votedFor != -1 && node.votedFor != rv.NodeId {
+		return rejectVote, nil
+	}
+	if rv.Term < node.currentTerm {
+		return rejectVote, nil
+	}
+	if N == 0 {
+		node.votedFor = rv.NodeId
+		return voteTrue, nil
+	
+	} else {
+		if rv.LastLogTerm > node.log[N-1].Term || (rv.LastLogTerm == node.log[N-1].Term && rv.LastLogIndex > node.log[N-1].Index) {
+			node.votedFor = rv.NodeId
+			return voteTrue, nil
+		}
+	}
+	return rejectVote, nil
+}
+
+
 func (kv *kvStoreServer) Get(_ context.Context, k *pb.Key) (*pb.Value, error) {
 	ret_val := kvstore.Get(int(k.KeyVal))
 	return &pb.Value{Val: ret_val}, nil
@@ -151,11 +179,13 @@ func (kv *kvStoreServer) Watch(k *pb.Key, stream pb.KVStore_WatchServer) (error)
 func main () { 
 	var opts []grpc.ServerOption
 	var kvStore *kvStoreServer = &kvStoreServer{}
+	kvStore.raft = &RaftNode{}
 	var allArgs = os.Args
 	allPorts := []int{50051, 50052, 50053}
 	userPort, _ := strconv.Atoi(allArgs[1])
 	for i, port := range allPorts {
 		if port == userPort {
+			kvStore.raft.id = int32(i)
 			allPorts = append(allPorts[:i], allPorts[i+1:]...)
 			break
 		}
@@ -169,8 +199,10 @@ func main () {
 		}
 		defer conn.Close()
 		kvStore.peers = append(kvStore.peers, pb.NewKVStoreClient(conn))
-
 	}
+	kvStore.raft.currentTerm = 0
+	kvStore.raft.peers = kvStore.peers
+	kvStore.raft.votedFor = -1
 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", userPort))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
