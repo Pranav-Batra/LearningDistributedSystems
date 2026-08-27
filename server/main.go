@@ -113,6 +113,27 @@ func (node *RaftNode) NodeRequestsVote(rv *pb.RequestVote) (*pb.RequestVoteRespo
 	return rejectVote, nil
 }
 
+func (node *RaftNode) NodeAppendEntries(ae *pb.AppendEntries) (*pb.AppendEntriesResponse, error) {
+	N := len(node.log)
+
+	if ae.LeaderTerm < node.currentTerm {
+		return &pb.AppendEntriesResponse{FollowerTerm: node.currentTerm, AppendedEntries: false}, nil
+	}
+	if N <= int(ae.PrevIndex) {
+		return &pb.AppendEntriesResponse{FollowerTerm: node.currentTerm, AppendedEntries: false}, nil
+	}
+	if ae.PrevIndex >= 0 {
+			if node.log[ae.PrevIndex].Term != ae.PrevTerm {
+		return &pb.AppendEntriesResponse{FollowerTerm: node.currentTerm, AppendedEntries: false}, nil
+	}
+	}
+	node.BecomeFollower(ae.LeaderTerm)
+	node.log = node.log[:ae.PrevIndex+1]
+	for i := range len(ae.Entries){
+		node.log = append(node.log, *ae.Entries[i])
+	}
+	return &pb.AppendEntriesResponse{FollowerTerm: node.currentTerm, AppendedEntries: true}, nil
+}
 
 func (kv *kvStoreServer) Get(_ context.Context, k *pb.Key) (*pb.Value, error) {
 	ret_val := kvstore.Get(int(k.KeyVal))
@@ -124,14 +145,16 @@ func (kv *kvStoreServer) Set(_ context.Context, sr *pb.SetRequest) (*pb.Value, e
 	if sr.FromClient {
 		sr.FromClient = false
 		for _, peerCon := range kv.peers {
-			ctx := context.Background()
-			fmt.Printf("Propagating the value %v for key: %v to server %v\n", sr.Val, sr.KeyVal, peerCon)
-			value, err := peerCon.Set(ctx, sr)
-			if err != nil || value == nil{
-				fmt.Printf("client.Set failed: %v\n", err)
-				break
-			}
-			fmt.Printf("Value set: %v\n", value.Val)
+			go func (pc pb.KVStoreClient) {
+				ctx := context.Background()
+				fmt.Printf("Propagating the value %v for key: %v to server %v\n", sr.Val, sr.KeyVal, peerCon)
+				value, err := peerCon.Set(ctx, sr)
+				if err != nil || value == nil{
+					fmt.Printf("client.Set failed: %v\n", err)
+				}
+				fmt.Printf("Value set: %v\n", value.Val)
+			}(peerCon)
+			
 		}
 	}
 	return &pb.Value{Val: input_val}, nil
@@ -142,18 +165,19 @@ func (kv *kvStoreServer) Delete(_ context.Context, k *pb.Key) (*pb.DeleteInfo, e
 	if k.FromClient {
 		k.FromClient = false
 		for _, peerCon := range kv.peers {
-			ctx := context.Background()
-			fmt.Printf("Propagating the delete of key %v to server %v\n", k.KeyVal, peerCon)
-			delInfo, err := peerCon.Delete(ctx, k)
-			if err != nil || delInfo == nil{
-				fmt.Printf("client.Delete failed: %v\n", err)
-				break
-			}
-			if delInfo.Existed { 
-				fmt.Printf("The value %v existed and was deleted\n", delInfo.Val)
-			} else {
-				fmt.Printf("The key/value pair did NOT exist, nothing was deleted.\n")
-			}
+			go func (pc pb.KVStoreClient) {
+				ctx := context.Background()
+				fmt.Printf("Propagating the delete of key %v to server %v\n", k.KeyVal, peerCon)
+				delInfo, err := peerCon.Delete(ctx, k)
+				if err != nil || delInfo == nil{
+					fmt.Printf("client.Delete failed: %v\n", err)
+				}
+				if delInfo.Existed { 
+					fmt.Printf("The value %v existed and was deleted\n", delInfo.Val)
+				} else {
+					fmt.Printf("The key/value pair did NOT exist, nothing was deleted.\n")
+				}
+			}(peerCon)
 		}
 	}
 	return &pb.DeleteInfo{Existed: exists, Val: del_val}, nil
