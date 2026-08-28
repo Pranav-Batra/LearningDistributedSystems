@@ -1,0 +1,36 @@
+goos: darwin
+goarch: arm64
+pkg: gocurrencylearning/server
+cpu: Apple M1
+BenchmarkGRPCSet-8           	   59994	     17947 ns/op	    8775 B/op	     151 allocs/op
+BenchmarkGRPCSet-8           	   67065	     17725 ns/op	    8738 B/op	     151 allocs/op
+BenchmarkGRPCSet-8           	   63985	     21733 ns/op	    8740 B/op	     151 allocs/op
+BenchmarkGRPCSet-8           	   65641	     17883 ns/op	    8729 B/op	     151 allocs/op
+BenchmarkGRPCSet-8           	   65763	     17938 ns/op	    8722 B/op	     151 allocs/op
+BenchmarkGRPCSet-8           	   66018	     19762 ns/op	    8720 B/op	     151 allocs/op
+BenchmarkGRPCSet-8           	   65418	     17914 ns/op	    8720 B/op	     151 allocs/op
+BenchmarkGRPCSet-8           	   64858	     18175 ns/op	    8716 B/op	     151 allocs/op
+BenchmarkGRPCSet-8           	   64401	     17965 ns/op	    8721 B/op	     151 allocs/op
+BenchmarkGRPCSet-8           	   65847	     17849 ns/op	    8718 B/op	     151 allocs/op
+BenchmarkGRPCGet-8           	   65416	     17851 ns/op	    8588 B/op	     150 allocs/op
+BenchmarkGRPCGet-8           	   66037	     17788 ns/op	    8594 B/op	     150 allocs/op
+BenchmarkGRPCGet-8           	   66208	     17835 ns/op	    8591 B/op	     150 allocs/op
+BenchmarkGRPCGet-8           	   66201	     19349 ns/op	    8589 B/op	     150 allocs/op
+BenchmarkGRPCGet-8           	   66328	     17795 ns/op	    8592 B/op	     150 allocs/op
+BenchmarkGRPCGet-8           	   66316	     18585 ns/op	    8590 B/op	     150 allocs/op
+BenchmarkGRPCGet-8           	   66446	     17861 ns/op	    8593 B/op	     150 allocs/op
+BenchmarkGRPCGet-8           	   66235	     17831 ns/op	    8592 B/op	     150 allocs/op
+BenchmarkGRPCGet-8           	   66172	     17827 ns/op	    8590 B/op	     150 allocs/op
+BenchmarkGRPCGet-8           	   66568	     17868 ns/op	    8590 B/op	     150 allocs/op
+BenchmarkGRPCGetParallel-8   	  185623	      6246 ns/op	    8370 B/op	     138 allocs/op
+BenchmarkGRPCGetParallel-8   	  187098	      6332 ns/op	    8366 B/op	     138 allocs/op
+BenchmarkGRPCGetParallel-8   	  189438	      6733 ns/op	    8366 B/op	     138 allocs/op
+BenchmarkGRPCGetParallel-8   	  177217	      7089 ns/op	    8365 B/op	     138 allocs/op
+BenchmarkGRPCGetParallel-8   	  178785	      6505 ns/op	    8368 B/op	     138 allocs/op
+BenchmarkGRPCGetParallel-8   	  185439	      6983 ns/op	    8366 B/op	     138 allocs/op
+BenchmarkGRPCGetParallel-8   	  189481	      7099 ns/op	    8366 B/op	     138 allocs/op
+BenchmarkGRPCGetParallel-8   	  177892	      6550 ns/op	    8369 B/op	     138 allocs/op
+BenchmarkGRPCGetParallel-8   	  183613	      6685 ns/op	    8369 B/op	     138 allocs/op
+BenchmarkGRPCGetParallel-8   	  180753	      6655 ns/op	    8365 B/op	     138 allocs/op
+PASS
+ok  	gocurrencylearning/server	43.752s
