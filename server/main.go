@@ -87,7 +87,56 @@ func (node *RaftNode) BecomeCandidate() {
 	node.votedFor = node.id
 }
 
+func (node *RaftNode) SendAppendEntries() {
+	mu.Lock()
+	leader_term := node.currentTerm
+	leader_id := node.id
+	next_index_snapshot := make([]int32, len(node.nextIndex))
+	copy(next_index_snapshot, node.nextIndex)
+	logSnapshot := make([]pb.LogEntry, len(node.log))
+	copy(logSnapshot, node.log)
+	mu.Unlock()
+	for i, peer := range node.peers {
+		go func(peer_idx int, pc pb.KVStoreClient){
+			index_to_send := next_index_snapshot[peer_idx]
+			log_entries := logSnapshot[index_to_send:]
+			ptrEntries := make([]*pb.LogEntry, len(log_entries))
+			for i := range log_entries {
+				ptrEntries[i] = &log_entries[i]
+			}
+			prev_index := int32(0)
+			if index_to_send > 0 {
+				prev_index = index_to_send - 1
+			}
+			prev_term := node.log[prev_index].Term
+			entries_message := &pb.AppendEntries{LeaderTerm: leader_term, Entries: ptrEntries, PrevTerm: prev_term,
+				PrevIndex: prev_index, LeaderId: leader_id}
+			ctx := context.Background()
+			response, err := pc.NodeAppendEntries(ctx, entries_message)
+			if err != nil { 
+				fmt.Printf("Failed to send append entries message.")
+				return
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			if response.AppendedEntries {
+				node.matchIndex[peer_idx] = int32(len(node.log) - 1)
+				node.nextIndex[peer_idx] = int32(len(node.log))
+			} else {
+				if response.FollowerTerm > node.currentTerm {
+					node.BecomeFollower(response.FollowerTerm)
+					return
+				} else {
+					node.nextIndex[peer_idx] -= 1
+				}
+			}
+		}(i, peer)
+	}
+}
+
 func (node *RaftNode) NodeRequestsVote(rv *pb.RequestVote) (*pb.RequestVoteResponse, error) {
+	mu.Lock()
+	defer mu.Unlock()
 	N := len(node.log)
 	if rv.Term > node.currentTerm {
 		node.BecomeFollower(rv.Term)
@@ -114,6 +163,8 @@ func (node *RaftNode) NodeRequestsVote(rv *pb.RequestVote) (*pb.RequestVoteRespo
 }
 
 func (node *RaftNode) NodeAppendEntries(ae *pb.AppendEntries) (*pb.AppendEntriesResponse, error) {
+	mu.Lock()
+	defer mu.Unlock()
 	N := len(node.log)
 
 	if ae.LeaderTerm < node.currentTerm {
@@ -133,6 +184,14 @@ func (node *RaftNode) NodeAppendEntries(ae *pb.AppendEntries) (*pb.AppendEntries
 		node.log = append(node.log, *ae.Entries[i])
 	}
 	return &pb.AppendEntriesResponse{FollowerTerm: node.currentTerm, AppendedEntries: true}, nil
+}
+
+func (kv *kvStoreServer) NodeAppendEntries(_ context.Context, ae *pb.AppendEntries) (*pb.AppendEntriesResponse, error) {
+	return kv.raft.NodeAppendEntries(ae)
+}
+
+func (kv *kvStoreServer) NodeRequestsVote(_ context.Context, rv *pb.RequestVote) (*pb.RequestVoteResponse, error) {
+	return kv.raft.NodeRequestsVote(rv)
 }
 
 func (kv *kvStoreServer) Get(_ context.Context, k *pb.Key) (*pb.Value, error) {
