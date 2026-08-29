@@ -65,14 +65,20 @@ func (node *RaftNode) RunElectionTimer() {
 	for {
 		select {
 		case <- node.resetTimer.C:
-			node.StartElection()
 			node.resetTimer.Reset(randomElectionTimer())
+			mu.Lock()
+			is_leader := node.state == Leader
+			mu.Unlock()
+			if !is_leader {
+				node.StartElection()
+			}
+			
 		}
 	}
 }
 
 func randomElectionTimer() time.Duration {
-	return time.Duration(150+rand.Intn(150)) * time.Millisecond
+	return time.Duration(500+rand.Intn(500)) * time.Millisecond
 }
 
 //runs when reset timer fires with no message from leader
@@ -97,7 +103,7 @@ func (node *RaftNode) StartElection() {
 		go func(pc pb.KVStoreClient) {
 			resp, err := pc.NodeRequestsVote(ctx, request_vote)
 			if err != nil {
-				fmt.Printf("Failed to get vote response.")
+				fmt.Printf("Failed to get vote response.\n")
 				votes <- 0
 				return
 			}
@@ -131,19 +137,28 @@ func (node *RaftNode) BecomeLeader() {
 		node.nextIndex[i] = int32(len(node.log))
 	}
 	node.leaderId = node.id
+	node.resetTimer.Reset(randomElectionTimer())
+	fmt.Printf("Node %v has become leader in term %v\n", node.id, node.currentTerm)
 }
 
 func (node *RaftNode) BecomeFollower(term int32) {
 	if term < node.currentTerm {
 		return
 	}
+
+	if term == node.currentTerm && node.state == Follower {
+        return
+    }
+
 	if term > node.currentTerm {
 		node.votedFor = -1
 	}
+
 	node.currentTerm = term
 	node.state = Follower
 	node.matchIndex = nil
 	node.nextIndex = nil
+	fmt.Printf("Node %v stepping down to follower, term %v\n", node.id, node.currentTerm)
 }
 
 func (node *RaftNode) BecomeCandidate() {
@@ -170,7 +185,7 @@ func (node *RaftNode) SendAppendEntries() {
 			for i := range log_entries {
 				ptrEntries[i] = &log_entries[i]
 			}
-			prev_index := int32(0)
+			prev_index := int32(-1)
 			prev_term := int32(0)
 			if index_to_send > 0 {
 				prev_index = index_to_send - 1
@@ -181,21 +196,26 @@ func (node *RaftNode) SendAppendEntries() {
 			ctx := context.Background()
 			response, err := pc.NodeAppendEntries(ctx, entries_message)
 			if err != nil { 
-				fmt.Printf("Failed to send append entries message.")
+				fmt.Printf("Failed to send append entries message.\n")
 				return
 			}
 			mu.Lock()
 			defer mu.Unlock()
+			if node.state != Leader {
+				return
+			}
 			if response.AppendedEntries {
-				node.matchIndex[peer_idx] = int32(len(node.log) - 1)
-				node.nextIndex[peer_idx] = int32(len(node.log))
+				success_match_index := index_to_send + int32(len(log_entries)) - 1
+				node.matchIndex[peer_idx] = success_match_index
+				node.nextIndex[peer_idx] = success_match_index + 1
+				node.resetTimer.Reset(randomElectionTimer())
 			} else {
 				if response.FollowerTerm > node.currentTerm {
 					node.BecomeFollower(response.FollowerTerm)
 					return
-				} else {
-					node.nextIndex[peer_idx] -= 1
-				}
+				} else if node.nextIndex[peer_idx] > 0 {
+        			node.nextIndex[peer_idx] -= 1
+    			}
 			}
 		}(i, peer)
 	}
@@ -239,16 +259,22 @@ func (node *RaftNode) NodeAppendEntries(ae *pb.AppendEntries) (*pb.AppendEntries
 	if ae.LeaderTerm < node.currentTerm {
 		return &pb.AppendEntriesResponse{FollowerTerm: node.currentTerm, AppendedEntries: false}, nil
 	}
-	if N <= int(ae.PrevIndex) {
-		return &pb.AppendEntriesResponse{FollowerTerm: node.currentTerm, AppendedEntries: false}, nil
-	}
-	if ae.PrevIndex >= 0 {
-			if node.log[ae.PrevIndex].Term != ae.PrevTerm {
-		return &pb.AppendEntriesResponse{FollowerTerm: node.currentTerm, AppendedEntries: false}, nil
-	}
-	}
+
 	node.BecomeFollower(ae.LeaderTerm)
 	node.resetTimer.Reset(randomElectionTimer())
+
+	// if N <= int(ae.PrevIndex) {
+	// 	return &pb.AppendEntriesResponse{FollowerTerm: node.currentTerm, AppendedEntries: false}, nil
+	// }
+	if ae.PrevIndex >= 0 {
+		if N <= int(ae.PrevIndex) {
+			return &pb.AppendEntriesResponse{FollowerTerm: node.currentTerm, AppendedEntries: false}, nil
+		}
+		if node.log[ae.PrevIndex].Term != ae.PrevTerm {
+		return &pb.AppendEntriesResponse{FollowerTerm: node.currentTerm, AppendedEntries: false}, nil
+	}
+	}
+	
 	node.log = node.log[:ae.PrevIndex+1]
 	for i := range len(ae.Entries){
 		node.log = append(node.log, *ae.Entries[i])
@@ -360,10 +386,10 @@ func main () {
 	go kvStore.raft.RunElectionTimer()
 	go func () {
 		ticker := time.NewTicker(50 * time.Millisecond)
-		mu.Lock()
-		isLeader := kvStore.raft.state == Leader
-		mu.Unlock()
 		for range ticker.C {
+			mu.Lock()
+			isLeader := kvStore.raft.state == Leader
+			mu.Unlock()
 			if isLeader {
 				kvStore.raft.SendAppendEntries()
 			}
