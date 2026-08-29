@@ -10,10 +10,14 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"time"
+	"math/rand"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
+
+const MAJORITY_VOTES = 2
 
 var mu sync.Mutex
 
@@ -51,9 +55,72 @@ type RaftNode struct {
 	log []pb.LogEntry
 	leaderId int32
 	peers []pb.KVStoreClient
+	resetTimer *time.Timer
 
 	matchIndex []int32
 	nextIndex []int32
+}
+
+func (node *RaftNode) RunElectionTimer() {
+	for {
+		select {
+		case <- node.resetTimer.C:
+			node.StartElection()
+			node.resetTimer.Reset(randomElectionTimer())
+		}
+	}
+}
+
+func randomElectionTimer() time.Duration {
+	return time.Duration(150+rand.Intn(150)) * time.Millisecond
+}
+
+//runs when reset timer fires with no message from leader
+func (node *RaftNode) StartElection() {
+	mu.Lock()
+	node.BecomeCandidate()
+	total_votes := 1
+	term := node.currentTerm
+	id := node.id
+	last_log_index := 0
+	last_log_term := 0
+	if len(node.log) > 0{
+		last_log_index = len(node.log) - 1
+		last_log_term = int(node.log[last_log_index].Term)
+	}
+	// last_log_term := node.log[last_log_index].Term
+	mu.Unlock()
+	votes := make(chan int, 3)
+	request_vote := &pb.RequestVote{Term: term, NodeId: id, LastLogIndex: int32(last_log_index), LastLogTerm: int32(last_log_term)}
+	for _, peer := range node.peers {
+		ctx := context.Background()
+		go func(pc pb.KVStoreClient) {
+			resp, err := pc.NodeRequestsVote(ctx, request_vote)
+			if err != nil {
+				fmt.Printf("Failed to get vote response.")
+				votes <- 0
+				return
+			}
+			if resp.VotedForCandidate {
+				votes <- 1
+			} else {
+				votes <- 0
+			}
+		}(peer)
+	}
+
+	for i := 0; i < len(node.peers); i++ {
+		val := <- votes
+		total_votes += val
+		if total_votes >= MAJORITY_VOTES {
+			mu.Lock()
+			if node.state == Candidate {
+				node.BecomeLeader()
+			}
+			mu.Unlock()
+			return
+		}
+	}
 }
 
 func (node *RaftNode) BecomeLeader() {
@@ -64,7 +131,6 @@ func (node *RaftNode) BecomeLeader() {
 		node.nextIndex[i] = int32(len(node.log))
 	}
 	node.leaderId = node.id
-	
 }
 
 func (node *RaftNode) BecomeFollower(term int32) {
@@ -105,10 +171,11 @@ func (node *RaftNode) SendAppendEntries() {
 				ptrEntries[i] = &log_entries[i]
 			}
 			prev_index := int32(0)
+			prev_term := int32(0)
 			if index_to_send > 0 {
 				prev_index = index_to_send - 1
+				prev_term = logSnapshot[prev_index].Term
 			}
-			prev_term := node.log[prev_index].Term
 			entries_message := &pb.AppendEntries{LeaderTerm: leader_term, Entries: ptrEntries, PrevTerm: prev_term,
 				PrevIndex: prev_index, LeaderId: leader_id}
 			ctx := context.Background()
@@ -151,11 +218,13 @@ func (node *RaftNode) NodeRequestsVote(rv *pb.RequestVote) (*pb.RequestVoteRespo
 	}
 	if N == 0 {
 		node.votedFor = rv.NodeId
+		node.resetTimer.Reset(randomElectionTimer())
 		return voteTrue, nil
 	
 	} else {
 		if rv.LastLogTerm > node.log[N-1].Term || (rv.LastLogTerm == node.log[N-1].Term && rv.LastLogIndex > node.log[N-1].Index) {
 			node.votedFor = rv.NodeId
+			node.resetTimer.Reset(randomElectionTimer())
 			return voteTrue, nil
 		}
 	}
@@ -179,6 +248,7 @@ func (node *RaftNode) NodeAppendEntries(ae *pb.AppendEntries) (*pb.AppendEntries
 	}
 	}
 	node.BecomeFollower(ae.LeaderTerm)
+	node.resetTimer.Reset(randomElectionTimer())
 	node.log = node.log[:ae.PrevIndex+1]
 	for i := range len(ae.Entries){
 		node.log = append(node.log, *ae.Entries[i])
@@ -286,6 +356,19 @@ func main () {
 	kvStore.raft.currentTerm = 0
 	kvStore.raft.peers = kvStore.peers
 	kvStore.raft.votedFor = -1
+	kvStore.raft.resetTimer = time.NewTimer(randomElectionTimer())
+	go kvStore.raft.RunElectionTimer()
+	go func () {
+		ticker := time.NewTicker(50 * time.Millisecond)
+		mu.Lock()
+		isLeader := kvStore.raft.state == Leader
+		mu.Unlock()
+		for range ticker.C {
+			if isLeader {
+				kvStore.raft.SendAppendEntries()
+			}
+		}
+	}()
 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", userPort))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
