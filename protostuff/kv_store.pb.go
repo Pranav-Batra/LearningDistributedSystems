@@ -454,6 +454,7 @@ type AppendEntries struct {
 	PrevTerm      int32                  `protobuf:"varint,3,opt,name=prev_term,json=prevTerm,proto3" json:"prev_term,omitempty"`
 	PrevIndex     int32                  `protobuf:"varint,4,opt,name=prev_index,json=prevIndex,proto3" json:"prev_index,omitempty"`
 	LeaderId      int32                  `protobuf:"varint,5,opt,name=leader_id,json=leaderId,proto3" json:"leader_id,omitempty"`
+	LeaderCommit  int32                  `protobuf:"varint,6,opt,name=leader_commit,json=leaderCommit,proto3" json:"leader_commit,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -519,6 +520,13 @@ func (x *AppendEntries) GetPrevIndex() int32 {
 func (x *AppendEntries) GetLeaderId() int32 {
 	if x != nil {
 		return x.LeaderId
+	}
+	return 0
+}
+
+func (x *AppendEntries) GetLeaderCommit() int32 {
+	if x != nil {
+		return x.LeaderCommit
 	}
 	return 0
 }
@@ -610,7 +618,7 @@ const file_protostuff_kv_store_proto_rawDesc = "" +
 	"\x13RequestVoteResponse\x12\x1d\n" +
 	"\n" +
 	"voter_term\x18\x01 \x01(\x05R\tvoterTerm\x12.\n" +
-	"\x13voted_for_candidate\x18\x02 \x01(\bR\x11votedForCandidate\"\xb1\x01\n" +
+	"\x13voted_for_candidate\x18\x02 \x01(\bR\x11votedForCandidate\"\xd6\x01\n" +
 	"\rAppendEntries\x12\x1f\n" +
 	"\vleader_term\x18\x01 \x01(\x05R\n" +
 	"leaderTerm\x12&\n" +
@@ -618,7 +626,8 @@ const file_protostuff_kv_store_proto_rawDesc = "" +
 	"\tprev_term\x18\x03 \x01(\x05R\bprevTerm\x12\x1d\n" +
 	"\n" +
 	"prev_index\x18\x04 \x01(\x05R\tprevIndex\x12\x1b\n" +
-	"\tleader_id\x18\x05 \x01(\x05R\bleaderId\"g\n" +
+	"\tleader_id\x18\x05 \x01(\x05R\bleaderId\x12#\n" +
+	"\rleader_commit\x18\x06 \x01(\x05R\fleaderCommit\"g\n" +
 	"\x15AppendEntriesResponse\x12#\n" +
 	"\rfollower_term\x18\x01 \x01(\x05R\ffollowerTerm\x12)\n" +
 	"\x10appended_entries\x18\x02 \x01(\bR\x0fappendedEntries2\x95\x02\n" +

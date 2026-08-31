@@ -62,6 +62,7 @@ message AppendEntries {
     int32 prev_term = 3;
     int32 prev_index = 4;
     int32 leader_id = 5;
+    int32 leader_commit = 6;
 }
 
 message AppendEntriesResponse {

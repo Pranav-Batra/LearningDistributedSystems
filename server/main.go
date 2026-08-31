@@ -2,16 +2,18 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"gocurrencylearning/kvstore"
 	pb "gocurrencylearning/protostuff"
 	"log"
+	"math/rand"
 	"net"
 	"os"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
-	"math/rand"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -49,15 +51,20 @@ func (s ServerState) String() string {
 
 type RaftNode struct {
 	id int32
-	currentTerm int32
-	votedFor int32
+	currentTerm int32 //term node is on
+	votedFor int32 //id of node this node voted on for leader
 	state ServerState
-	log []pb.LogEntry
+	log []pb.LogEntry //log of operations on kvstore
 	leaderId int32
-	peers []pb.KVStoreClient
-	resetTimer *time.Timer
+	peers []pb.KVStoreClient //peer nodes in the cluster
+	resetTimer *time.Timer //timer for raft -> randomized to 500-1000 ms
+	commitIndex int32 //last committed index on the log
+	lastApplied int32 //last index actually applied to kvstore
 
-	matchIndex []int32
+	//for leaders -> 
+	// matchIndex[i] is the last log entry of node i that has matched leader
+	//nextIndex[i] is optimistic guess of next log entry to send to follower(deprecates if they can't get up to that point)
+	matchIndex []int32 
 	nextIndex []int32
 }
 
@@ -209,6 +216,7 @@ func (node *RaftNode) SendAppendEntries() {
 				node.matchIndex[peer_idx] = success_match_index
 				node.nextIndex[peer_idx] = success_match_index + 1
 				node.resetTimer.Reset(randomElectionTimer())
+				node.advanceCommitIndex()
 			} else {
 				if response.FollowerTerm > node.currentTerm {
 					node.BecomeFollower(response.FollowerTerm)
@@ -218,6 +226,20 @@ func (node *RaftNode) SendAppendEntries() {
     			}
 			}
 		}(i, peer)
+	}
+}
+
+func (node *RaftNode) advanceCommitIndex() {
+	indexes := make([]int32, len(node.peers) + 1)
+	for i := range node.matchIndex {
+		indexes[i] = node.matchIndex[i]
+	}
+	indexes[len(node.peers)] = int32(len(node.log) - 1)
+	slices.Sort(indexes)
+	median_idx := len(indexes) / 2
+	median_commit_pos := indexes[median_idx]
+	if indexes[median_idx] > node.commitIndex && median_commit_pos >= 0 && node.log[median_commit_pos].Term == node.currentTerm {
+		node.commitIndex = int32(median_commit_pos)
 	}
 }
 
@@ -296,45 +318,58 @@ func (kv *kvStoreServer) Get(_ context.Context, k *pb.Key) (*pb.Value, error) {
 }
 
 func (kv *kvStoreServer) Set(_ context.Context, sr *pb.SetRequest) (*pb.Value, error) { 
-	input_val := kvstore.Set(int(sr.KeyVal), string(sr.Val))
-	if sr.FromClient {
-		sr.FromClient = false
-		for _, peerCon := range kv.peers {
-			go func (pc pb.KVStoreClient) {
-				ctx := context.Background()
-				fmt.Printf("Propagating the value %v for key: %v to server %v\n", sr.Val, sr.KeyVal, peerCon)
-				value, err := peerCon.Set(ctx, sr)
-				if err != nil || value == nil{
-					fmt.Printf("client.Set failed: %v\n", err)
-				}
-				fmt.Printf("Value set: %v\n", value.Val)
-			}(peerCon)
-			
-		}
+	mu.Lock()
+	is_leader := kv.raft.state == Leader
+	mu.Unlock()
+	if !is_leader {
+		return nil, errors.New("This request needs to go to the leader node in the cluster.")
 	}
+	input_val := kvstore.Set(int(sr.KeyVal), string(sr.Val))
+	// if sr.FromClient {
+	// 	sr.FromClient = false
+	// 	for _, peerCon := range kv.peers {
+	// 		go func (pc pb.KVStoreClient) {
+	// 			ctx := context.Background()
+	// 			fmt.Printf("Propagating the value %v for key: %v to server %v\n", sr.Val, sr.KeyVal, peerCon)
+	// 			value, err := peerCon.Set(ctx, sr)
+	// 			if err != nil || value == nil{
+	// 				fmt.Printf("client.Set failed: %v\n", err)
+	// 			}
+	// 			fmt.Printf("Value set: %v\n", value.Val)
+	// 		}(peerCon)
+			
+	// 	}
+	// }
 	return &pb.Value{Val: input_val}, nil
 }
 
 func (kv *kvStoreServer) Delete(_ context.Context, k *pb.Key) (*pb.DeleteInfo, error) { 
-	exists, del_val := kvstore.Delete(int(k.KeyVal))
-	if k.FromClient {
-		k.FromClient = false
-		for _, peerCon := range kv.peers {
-			go func (pc pb.KVStoreClient) {
-				ctx := context.Background()
-				fmt.Printf("Propagating the delete of key %v to server %v\n", k.KeyVal, peerCon)
-				delInfo, err := peerCon.Delete(ctx, k)
-				if err != nil || delInfo == nil{
-					fmt.Printf("client.Delete failed: %v\n", err)
-				}
-				if delInfo.Existed { 
-					fmt.Printf("The value %v existed and was deleted\n", delInfo.Val)
-				} else {
-					fmt.Printf("The key/value pair did NOT exist, nothing was deleted.\n")
-				}
-			}(peerCon)
-		}
+	mu.Lock()
+	is_leader := kv.raft.state == Leader
+	mu.Unlock()
+	if !is_leader {
+		return nil, errors.New("This request needs to go to the leader node in the cluster.")
 	}
+	exists, del_val := kvstore.Delete(int(k.KeyVal))
+
+	// if k.FromClient {
+	// 	k.FromClient = false
+	// 	for _, peerCon := range kv.peers {
+	// 		go func (pc pb.KVStoreClient) {
+	// 			ctx := context.Background()
+	// 			fmt.Printf("Propagating the delete of key %v to server %v\n", k.KeyVal, peerCon)
+	// 			delInfo, err := peerCon.Delete(ctx, k)
+	// 			if err != nil || delInfo == nil{
+	// 				fmt.Printf("client.Delete failed: %v\n", err)
+	// 			}
+	// 			if delInfo.Existed { 
+	// 				fmt.Printf("The value %v existed and was deleted\n", delInfo.Val)
+	// 			} else {
+	// 				fmt.Printf("The key/value pair did NOT exist, nothing was deleted.\n")
+	// 			}
+	// 		}(peerCon)
+	// 	}
+	// }
 	return &pb.DeleteInfo{Existed: exists, Val: del_val}, nil
 }
 
