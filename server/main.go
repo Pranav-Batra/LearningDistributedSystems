@@ -58,8 +58,8 @@ type RaftNode struct {
 	leaderId int32
 	peers []pb.KVStoreClient //peer nodes in the cluster
 	resetTimer *time.Timer //timer for raft -> randomized to 500-1000 ms
-	commitIndex int32 //last committed index on the log
-	lastApplied int32 //last index actually applied to kvstore
+	commitIndex int32 //last committed index on the log -> everything up to this point can be safely applied to kvstore
+	lastApplied int32 //index of last operation actually applied to kvstore
 
 	//for leaders -> 
 	// matchIndex[i] is the last log entry of node i that has matched leader
@@ -183,6 +183,7 @@ func (node *RaftNode) SendAppendEntries() {
 	copy(next_index_snapshot, node.nextIndex)
 	logSnapshot := make([]pb.LogEntry, len(node.log))
 	copy(logSnapshot, node.log)
+	leader_entry := node.commitIndex
 	mu.Unlock()
 	for i, peer := range node.peers {
 		go func(peer_idx int, pc pb.KVStoreClient){
@@ -199,7 +200,7 @@ func (node *RaftNode) SendAppendEntries() {
 				prev_term = logSnapshot[prev_index].Term
 			}
 			entries_message := &pb.AppendEntries{LeaderTerm: leader_term, Entries: ptrEntries, PrevTerm: prev_term,
-				PrevIndex: prev_index, LeaderId: leader_id}
+				PrevIndex: prev_index, LeaderId: leader_id, LeaderCommit: leader_entry}
 			ctx := context.Background()
 			response, err := pc.NodeAppendEntries(ctx, entries_message)
 			if err != nil { 
@@ -241,6 +242,21 @@ func (node *RaftNode) advanceCommitIndex() {
 	if indexes[median_idx] > node.commitIndex && median_commit_pos >= 0 && node.log[median_commit_pos].Term == node.currentTerm {
 		node.commitIndex = int32(median_commit_pos)
 	}
+}
+
+func (node *RaftNode) applyCommittedEntries() {
+	mu.Lock()
+	defer mu.Unlock()
+	for _, op := range node.log[node.lastApplied + 1:node.commitIndex + 1] {
+		if _, ok := op.GetCommandType().(*pb.LogEntry_SetOp); ok {
+			set_op := op.GetSetOp()
+			kvstore.Set(int(set_op.KeyVal), set_op.Val)
+		} else if _, ok := op.GetCommandType().(*pb.LogEntry_DeleteOp); ok {
+			del_op := op.GetDeleteOp()
+			kvstore.Delete(int(del_op.KeyVal))
+		}
+		}
+	node.lastApplied = node.commitIndex
 }
 
 func (node *RaftNode) NodeRequestsVote(rv *pb.RequestVote) (*pb.RequestVoteResponse, error) {
@@ -301,6 +317,7 @@ func (node *RaftNode) NodeAppendEntries(ae *pb.AppendEntries) (*pb.AppendEntries
 	for i := range len(ae.Entries){
 		node.log = append(node.log, *ae.Entries[i])
 	}
+	node.commitIndex = min(ae.LeaderCommit, int32(len(node.log) - 1))
 	return &pb.AppendEntriesResponse{FollowerTerm: node.currentTerm, AppendedEntries: true}, nil
 }
 
@@ -320,57 +337,57 @@ func (kv *kvStoreServer) Get(_ context.Context, k *pb.Key) (*pb.Value, error) {
 func (kv *kvStoreServer) Set(_ context.Context, sr *pb.SetRequest) (*pb.Value, error) { 
 	mu.Lock()
 	is_leader := kv.raft.state == Leader
-	mu.Unlock()
 	if !is_leader {
+		mu.Unlock()
 		return nil, errors.New("This request needs to go to the leader node in the cluster.")
 	}
-	input_val := kvstore.Set(int(sr.KeyVal), string(sr.Val))
-	// if sr.FromClient {
-	// 	sr.FromClient = false
-	// 	for _, peerCon := range kv.peers {
-	// 		go func (pc pb.KVStoreClient) {
-	// 			ctx := context.Background()
-	// 			fmt.Printf("Propagating the value %v for key: %v to server %v\n", sr.Val, sr.KeyVal, peerCon)
-	// 			value, err := peerCon.Set(ctx, sr)
-	// 			if err != nil || value == nil{
-	// 				fmt.Printf("client.Set failed: %v\n", err)
-	// 			}
-	// 			fmt.Printf("Value set: %v\n", value.Val)
-	// 		}(peerCon)
-			
-	// 	}
-	// }
-	return &pb.Value{Val: input_val}, nil
+	term := kv.raft.currentTerm
+	set_op := &pb.LogEntry_SetOp{SetOp: sr}
+	log_entry := pb.LogEntry{Term: term, CommandType: set_op}
+	kv.raft.log = append(kv.raft.log, log_entry)
+	index := int32(len(kv.raft.log) - 1)
+	mu.Unlock()
+	for {
+		mu.Lock()
+		committed := kv.raft.commitIndex >= index
+		stillLeader := kv.raft.state == Leader
+		mu.Unlock()
+		if committed {
+			return &pb.Value{Val: sr.Val}, nil
+		}
+		if !stillLeader {
+			return nil, errors.New("This node is no longer the leader at time of commitment.")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 }
 
 func (kv *kvStoreServer) Delete(_ context.Context, k *pb.Key) (*pb.DeleteInfo, error) { 
 	mu.Lock()
 	is_leader := kv.raft.state == Leader
-	mu.Unlock()
 	if !is_leader {
+		mu.Unlock()
 		return nil, errors.New("This request needs to go to the leader node in the cluster.")
 	}
-	exists, del_val := kvstore.Delete(int(k.KeyVal))
-
-	// if k.FromClient {
-	// 	k.FromClient = false
-	// 	for _, peerCon := range kv.peers {
-	// 		go func (pc pb.KVStoreClient) {
-	// 			ctx := context.Background()
-	// 			fmt.Printf("Propagating the delete of key %v to server %v\n", k.KeyVal, peerCon)
-	// 			delInfo, err := peerCon.Delete(ctx, k)
-	// 			if err != nil || delInfo == nil{
-	// 				fmt.Printf("client.Delete failed: %v\n", err)
-	// 			}
-	// 			if delInfo.Existed { 
-	// 				fmt.Printf("The value %v existed and was deleted\n", delInfo.Val)
-	// 			} else {
-	// 				fmt.Printf("The key/value pair did NOT exist, nothing was deleted.\n")
-	// 			}
-	// 		}(peerCon)
-	// 	}
-	// }
-	return &pb.DeleteInfo{Existed: exists, Val: del_val}, nil
+	term := kv.raft.currentTerm
+	del_op := &pb.LogEntry_DeleteOp{DeleteOp: k}
+	log_entry := pb.LogEntry{Term: term, CommandType: del_op}
+	kv.raft.log = append(kv.raft.log, log_entry)
+	index := int32(len(kv.raft.log) - 1)
+	mu.Unlock()
+	for {
+		mu.Lock()
+		committed := kv.raft.commitIndex >= index
+		stillLeader := kv.raft.state == Leader
+		mu.Unlock()
+		if committed {
+			return &pb.DeleteInfo{Existed: true, Val: ""}, nil
+		}
+		if !stillLeader {
+			return nil, errors.New("This node is no longer the leader at time of commitment.")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 }
 
 func (kv *kvStoreServer) Watch(k *pb.Key, stream pb.KVStore_WatchServer) (error) {
@@ -418,6 +435,8 @@ func main () {
 	kvStore.raft.peers = kvStore.peers
 	kvStore.raft.votedFor = -1
 	kvStore.raft.resetTimer = time.NewTimer(randomElectionTimer())
+	kvStore.raft.lastApplied = -1
+	kvStore.raft.commitIndex = -1
 	go kvStore.raft.RunElectionTimer()
 	go func () {
 		ticker := time.NewTicker(50 * time.Millisecond)
@@ -428,6 +447,13 @@ func main () {
 			if isLeader {
 				kvStore.raft.SendAppendEntries()
 			}
+		}
+	}()
+
+	go func () {
+		ticker := time.NewTicker(10 * time.Millisecond)
+		for range ticker.C {
+			kvStore.raft.applyCommittedEntries()
 		}
 	}()
 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", userPort))
